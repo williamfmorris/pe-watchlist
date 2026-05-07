@@ -1,8 +1,0 @@
-{
-  "name": "pe-watchlist",
-  "version": "1.0.0",
-  "description": "P/E ratio watchlist with current, 5Y avg, revenue growth, and dividend yield",
-  "dependencies": {
-    "@vercel/kv": "^1.0.0"
-  }
-}

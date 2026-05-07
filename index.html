@@ -207,20 +207,11 @@ let activeTab = 'glance';
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 async function loadTickers() {
-  try {
-    const res = await fetch('/api/tickers');
-    const data = await res.json();
-    tickers = data.tickers || DEFAULT_TICKERS;
-  } catch(e) { tickers = DEFAULT_TICKERS; }
+  const saved = localStorage.getItem(STORAGE_KEY);
+  tickers = saved ? JSON.parse(saved) : DEFAULT_TICKERS;
 }
 async function saveTickers() {
-  try {
-    await fetch('/api/tickers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickers })
-    });
-  } catch(e) {}
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tickers));
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
