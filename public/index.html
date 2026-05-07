@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>P/E Watchlist</title>
+<style>
+:root {
+  --bg: #f9f8f6;
+  --surface: #ffffff;
+  --border: #e8e5e0;
+  --border-light: #f0ede8;
+  --text: #1a1814;
+  --text-2: #6b6560;
+  --text-3: #a09890;
+  --accent: #1a1814;
+  --green: #2d6a1f;
+  --green-bg: #eef6ea;
+  --red: #a8261d;
+  --red-bg: #faecea;
+  --amber: #8a5c0a;
+  --amber-bg: #fdf4e3;
+  --blue: #1a4a8a;
+  --blue-bg: #e8f0fc;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: 'Georgia', 'Times New Roman', serif;
+  --font-mono: 'Courier New', monospace;
+  --font-ui: system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); font-family: var(--font-ui); color: var(--text); min-height: 100vh; }
+.app { max-width: 960px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+/* Header */
+.header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.25rem; flex-wrap: wrap; gap: 8px; }
+.header h1 { font-family: var(--font); font-size: 22px; font-weight: 400; letter-spacing: -0.01em; color: var(--text); }
+.hbtns { display: flex; gap: 8px; }
+.btn { padding: 6px 14px; font-size: 12px; font-family: var(--font-ui); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); cursor: pointer; transition: all 0.15s; letter-spacing: 0.02em; }
+.btn:hover { background: var(--border-light); }
+.btn-primary { background: var(--text); color: #fff; border-color: var(--text); }
+.btn-primary:hover { background: #333; }
+
+/* Tabs */
+.tabs { display: flex; border-bottom: 1px solid var(--border); margin: 1.25rem 0; }
+.tab { padding: 8px 18px; font-size: 13px; color: var(--text-2); cursor: pointer; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent; font-family: var(--font-ui); transition: color 0.15s; }
+.tab.active { color: var(--text); border-bottom-color: var(--text); }
+.tab:hover { color: var(--text); }
+
+/* Status */
+.status-bar { font-size: 11px; color: var(--text-3); margin-bottom: 1rem; display: flex; align-items: center; gap: 6px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dot-green { background: var(--green); }
+.dot-amber { background: #d4860a; }
+.dot-gray { background: var(--text-3); }
+
+/* Summary strip */
+.summary { display: flex; gap: 0; margin-bottom: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.sum-item { flex: 1; padding: 12px 16px; border-right: 1px solid var(--border); }
+.sum-item:last-child { border-right: none; }
+.sum-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.sum-val { font-size: 17px; font-family: var(--font-mono); color: var(--text); }
+.sum-val.up { color: var(--red); }
+.sum-val.dn { color: var(--green); }
+
+/* Table */
+.tbl-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-2);
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none;
+  white-space: nowrap; background: var(--bg);
+}
+thead th:hover { color: var(--text); }
+thead th.sorted { color: var(--text); }
+thead th .arrow { margin-left: 3px; font-size: 10px; }
+tbody tr { border-bottom: 1px solid var(--border-light); transition: background 0.1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #faf9f7; }
+tbody td { padding: 10px 14px; color: var(--text); white-space: nowrap; }
+.td-ticker { font-family: var(--font-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+.td-name { color: var(--text-2); font-size: 12px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.td-num { text-align: right; font-family: var(--font-mono); font-size: 13px; }
+.td-badge { text-align: right; }
+
+/* P/E colour coding */
+.pe-ok { color: var(--green); }
+.pe-mid { color: var(--amber); }
+.pe-high { color: var(--red); }
+.pe-na { color: var(--text-3); }
+
+/* Badges */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+.badge-up { background: var(--red-bg); color: var(--red); }
+.badge-dn { background: var(--green-bg); color: var(--green); }
+.badge-eq { background: var(--border-light); color: var(--text-2); }
+.badge-rev-pos { background: var(--blue-bg); color: var(--blue); }
+.badge-rev-neg { background: var(--red-bg); color: var(--red); }
+.badge-rev-flat { background: var(--border-light); color: var(--text-2); }
+
+/* Skeleton */
+.skel { display: inline-block; height: 12px; border-radius: 3px; background: var(--border-light); animation: pulse 1.5s ease-in-out infinite; vertical-align: middle; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Remove button */
+.remove-btn { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 16px; padding: 0 4px; opacity: 0; line-height: 1; }
+tr:hover .remove-btn { opacity: 1; }
+.remove-btn:hover { color: var(--red); }
+
+/* Add panel */
+.add-panel { margin-top: 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; }
+.add-panel h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); }
+.add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.add-row input { flex: 1; min-width: 120px; padding: 8px 12px; font-size: 14px; font-family: var(--font-mono); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); }
+.add-row input:focus { outline: none; border-color: var(--text); }
+.hint { font-size: 11px; color: var(--text-3); margin-top: 8px; }
+
+.empty { text-align: center; padding: 3rem; color: var(--text-2); font-size: 14px; }
+.footnote { font-size: 11px; color: var(--text-3); margin-top: 10px; line-height: 1.6; }
+
+@media (max-width: 600px) {
+  .summary { flex-direction: column; }
+  .sum-item { border-right: none; border-bottom: 1px solid var(--border); }
+  .sum-item:last-child { border-bottom: none; }
+  .td-name { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>P/E Watchlist</h1>
+    <div class="hbtns">
+      <button class="btn" id="refreshBtn">↺ Refresh</button>
+      <button class="btn btn-primary" id="addBtn">+ Add stock</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="glance">Glance</button>
+    <button class="tab" data-tab="manage">Manage list</button>
+  </div>
+
+  <!-- Glance view -->
+  <div id="glanceView">
+    <div class="status-bar"><span class="dot dot-gray" id="statusDot"></span><span id="statusText">Loading…</span></div>
+    <div class="summary" id="summaryBar" style="display:none"></div>
+    <div class="tbl-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th data-col="ticker">Ticker <span class="arrow"></span></th>
+            <th data-col="name">Company <span class="arrow"></span></th>
+            <th data-col="pe" class="td-num sorted">Current P/E <span class="arrow">↑</span></th>
+            <th data-col="pe5y" class="td-num">5Y avg P/E <span class="arrow"></span></th>
+            <th data-col="vs" class="td-badge">vs 5Y avg <span class="arrow"></span></th>
+            <th data-col="revgrowth" class="td-badge">Rev growth (1Y fcast) <span class="arrow"></span></th>
+            <th data-col="divyield" class="td-num">Div yield <span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="footnote">
+      Current P/E = trailing twelve months &nbsp;·&nbsp; 5Y avg P/E computed from Yahoo Finance historical price &amp; earnings &nbsp;·&nbsp; Revenue growth = analyst consensus estimate for next fiscal year vs current year, sourced from Yahoo Finance. <span id="pe5yNote"></span>
+    </div>
+  </div>
+
+  <!-- Manage view -->
+  <div id="manageView" style="display:none">
+    <div class="tbl-wrap">
+      <table id="manageTable">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Company</th>
+            <th class="td-num">Current P/E</th>
+            <th class="td-num">5Y avg P/E</th>
+            <th class="td-badge">Rev growth (1Y)</th>
+            <th class="td-num">Div yield</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="manageBody"></tbody>
+      </table>
+    </div>
+    <div class="add-panel">
+      <h3>Add a stock</h3>
+      <div class="add-row">
+        <input type="text" id="tickerInput" placeholder="e.g. MSFT" maxlength="8"/>
+        <button class="btn btn-primary" id="addConfirmBtn">Add</button>
+      </div>
+      <div class="hint" id="addHint">Enter a valid US ticker symbol.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'pe-watchlist-v3';
+const DEFAULT_TICKERS = ['AAPL','MSFT','GOOGL','META','AMZN'];
+let tickers = [];
+let peData = {};
+let sortCol = 'pe';
+let sortDir = 1;
+let activeTab = 'glance';
+
+// ── Storage ──────────────────────────────────────────────────────────────────
+async function loadTickers() {
+  try {
+    const res = await fetch('/api/tickers');
+    const data = await res.json();
+    tickers = data.tickers || DEFAULT_TICKERS;
+  } catch(e) { tickers = DEFAULT_TICKERS; }
+}
+async function saveTickers() {
+  try {
+    await fetch('/api/tickers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickers })
+    });
+  } catch(e) {}
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+async function fetchFull(ticker) {
+  const [quote, pe5y, revGrowth, divYield] = await Promise.all([
+    fetchQuote(ticker),
+    get5YAvgPE(ticker),
+    getRevGrowth(ticker),
+    getDivYield(ticker)
+  ]);
+  return { ...quote, pe5y, revGrowth, divYield };
+}
+
+async function fetchQuote(ticker) {
+  for (const base of ['query1', 'query2']) {
+    try {
+      const r = await fetch(`https://${base}.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`, {headers:{Accept:'application/json'}});
+      if (!r.ok) continue;
+      const d = await r.json();
+      const meta = d?.chart?.result?.[0]?.meta;
+      if (!meta) continue;
+      return {
+        name: (meta.shortName || meta.longName || ticker).replace(/\s+(Inc\.?|Corp\.?|Ltd\.?|LLC|Co\.?|PLC\.?)$/i,'').slice(0,28),
+        pe: meta.trailingPE || null,
+        error: false
+      };
+    } catch(e) {}
+  }
+  return { name: ticker, pe: null, error: true };
+}
+
+async function get5YAvgPE(ticker) {
+  try {
+    const [chartRes, earningsRes] = await Promise.all([
+      fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=3mo&range=5y`, {headers:{Accept:'application/json'}}),
+      fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=earnings`, {headers:{Accept:'application/json'}})
+    ]);
+    if (!chartRes.ok || !earningsRes.ok) return null;
+    const chartData = await chartRes.json();
+    const earningsData = await earningsRes.json();
+    const prices = chartData?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || [];
+    const timestamps = chartData?.chart?.result?.[0]?.timestamp || [];
+    const annualEarnings = earningsData?.quoteSummary?.result?.[0]?.earnings?.financialsChart?.yearly || [];
+    if (!annualEarnings.length || !prices.length) return null;
+    const epsMap = {};
+    annualEarnings.forEach(e => { if (e.date && e.earnings?.raw != null) epsMap[e.date] = e.earnings.raw; });
+    const pePoints = [];
+    timestamps.forEach((ts, i) => {
+      const price = prices[i];
+      if (!price || price <= 0) return;
+      const year = new Date(ts * 1000).getFullYear();
+      const eps = epsMap[year] || epsMap[year - 1];
+      if (eps && eps > 0) pePoints.push(price / eps);
+    });
+    if (!pePoints.length) return null;
+    const filtered = pePoints.filter(p => p > 0 && p < 200);
+    if (!filtered.length) return null;
+    return parseFloat((filtered.reduce((a,b) => a+b, 0) / filtered.length).toFixed(1));
+  } catch(e) { return null; }
+}
+
+async function getRevGrowth(ticker) {
+  // Yahoo financialData module has revenueGrowth (TTM) and
+  // earningsGrowth, but for FORWARD revenue growth we need
+  // the "earningsTrend" or "revenueEstimate" from quoteSummary
+  for (const base of ['query1', 'query2']) {
+    try {
+      const r = await fetch(
+        `https://${base}.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=financialData,earningsTrend`,
+        {headers:{Accept:'application/json'}}
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const res = d?.quoteSummary?.result?.[0];
+      if (!res) continue;
+
+      // earningsTrend has revenue estimates by period
+      const trend = res.earningsTrend?.trend || [];
+      // periods: '0q'=this quarter, '+1q'=next quarter, '0y'=this year, '+1y'=next year
+      const nextYear = trend.find(t => t.period === '+1y');
+      const thisYear = trend.find(t => t.period === '0y');
+
+      if (nextYear?.revenueEstimate?.avg?.raw && thisYear?.revenueEstimate?.avg?.raw) {
+        const fwd = nextYear.revenueEstimate.avg.raw;
+        const cur = thisYear.revenueEstimate.avg.raw;
+        if (cur > 0) {
+          return parseFloat(((fwd - cur) / cur * 100).toFixed(1));
+        }
+      }
+
+      // Fallback: financialData revenueGrowth is TTM, label it accordingly
+      const ttm = res.financialData?.revenueGrowth?.raw;
+      if (ttm != null) return { value: parseFloat((ttm * 100).toFixed(1)), isTTM: true };
+
+      return null;
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function getDivYield(ticker) {
+  for (const base of ['query1', 'query2']) {
+    try {
+      const r = await fetch(
+        `https://${base}.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=summaryDetail`,
+        {headers:{Accept:'application/json'}}
+      );
+      if (!r.ok) continue;
+      const d = await r.json();
+      const sd = d?.quoteSummary?.result?.[0]?.summaryDetail;
+      if (!sd) continue;
+      // dividendYield is expressed as a decimal (e.g. 0.0052), convert to %
+      const raw = sd.dividendYield?.raw ?? sd.trailingAnnualDividendYield?.raw ?? null;
+      if (raw == null) return null;
+      return parseFloat((raw * 100).toFixed(2));
+    } catch(e) {}
+  }
+  return null;
+}
+function peColor(pe) {
+  if (!pe) return 'pe-na';
+  if (pe < 15) return 'pe-ok';
+  if (pe < 30) return 'pe-mid';
+  return 'pe-high';
+}
+function fmtPE(val, cls) {
+  if (val == null) return `<span class="pe-na">—</span>`;
+  return `<span class="${cls || peColor(val)}">${parseFloat(val).toFixed(1)}</span>`;
+}
+function fmtVs(pe, pe5y) {
+  if (!pe || !pe5y) return `<span class="pe-na">—</span>`;
+  const diff = ((pe - pe5y) / pe5y) * 100;
+  const sign = diff > 0 ? '+' : '';
+  const cls = diff > 5 ? 'badge-up' : diff < -5 ? 'badge-dn' : 'badge-eq';
+  const arrow = diff > 5 ? '▲' : diff < -5 ? '▼' : '~';
+  return `<span class="badge ${cls}">${arrow} ${sign}${diff.toFixed(0)}%</span>`;
+}
+function fmtRevGrowth(val) {
+  if (val == null) return `<span class="pe-na">—</span>`;
+  const v = typeof val === 'object' ? val.value : val;
+  const isTTM = typeof val === 'object' && val.isTTM;
+  const sign = v > 0 ? '+' : '';
+  const cls = v >= 8 ? 'badge-rev-pos' : v < 0 ? 'badge-rev-neg' : 'badge-rev-flat';
+  const label = `${sign}${v.toFixed(1)}%${isTTM ? ' ᵀ' : ''}`;
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function skelCell(w) { return `<span class="skel" style="width:${w}px"></span>`; }
+
+function fmtDivYield(val) {
+  if (val == null || val === 0) return `<span class="pe-na">—</span>`;
+  const cls = val >= 3 ? 'pe-ok' : val >= 1 ? 'pe-mid' : '';
+  return `<span class="${cls}">${val.toFixed(2)}%</span>`;
+}
+// ── Sorting ───────────────────────────────────────────────────────────────────
+function getRevVal(d) {
+  if (!d?.revGrowth) return null;
+  return typeof d.revGrowth === 'object' ? d.revGrowth.value : d.revGrowth;
+}
+function getSorted() {
+  return [...tickers].sort((a, b) => {
+    const da = peData[a], db = peData[b];
+    const INF = sortDir > 0 ? Infinity : -Infinity;
+    if (sortCol === 'ticker') return sortDir * a.localeCompare(b);
+    if (sortCol === 'name') return sortDir * ((da?.name||a).localeCompare(db?.name||b));
+    if (sortCol === 'pe') return sortDir * ((da?.pe ?? INF) - (db?.pe ?? INF));
+    if (sortCol === 'pe5y') return sortDir * ((da?.pe5y ?? INF) - (db?.pe5y ?? INF));
+    if (sortCol === 'vs') {
+      const va = (da?.pe && da?.pe5y) ? (da.pe - da.pe5y)/da.pe5y : INF;
+      const vb = (db?.pe && db?.pe5y) ? (db.pe - db.pe5y)/db.pe5y : INF;
+      return sortDir * (va - vb);
+    }
+    if (sortCol === 'revgrowth') return sortDir * ((getRevVal(da) ?? INF) - (getRevVal(db) ?? INF));
+    if (sortCol === 'divyield') return sortDir * ((da?.divYield ?? INF) - (db?.divYield ?? INF));
+    return 0;
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderTable(bodyId, editable) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  body.innerHTML = '';
+  if (!tickers.length) {
+    body.innerHTML = `<tr><td colspan="${editable ? 6 : 6}" class="empty">No stocks yet — add some below.</td></tr>`;
+    return;
+  }
+  getSorted().forEach(ticker => {
+    const d = peData[ticker];
+    const tr = document.createElement('tr');
+    if (!d || d.loading) {
+      tr.innerHTML = `
+        <td class="td-ticker">${ticker}</td>
+        <td class="td-name">${skelCell(110)}</td>
+        <td class="td-num">${skelCell(36)}</td>
+        <td class="td-num">${skelCell(36)}</td>
+        <td class="td-badge">${skelCell(52)}</td>
+        <td class="td-badge">${skelCell(52)}</td>
+        <td class="td-num">${skelCell(36)}</td>
+        ${editable ? '<td></td>' : ''}`;
+    } else {
+      tr.innerHTML = `
+        <td class="td-ticker">${ticker}</td>
+        <td class="td-name">${d.name || ticker}</td>
+        <td class="td-num">${fmtPE(d.pe)}</td>
+        <td class="td-num">${fmtPE(d.pe5y, 'pe-mid')}</td>
+        ${editable ? '' : `<td class="td-badge">${fmtVs(d.pe, d.pe5y)}</td>`}
+        <td class="td-badge">${fmtRevGrowth(d.revGrowth)}</td>
+        <td class="td-num">${fmtDivYield(d.divYield)}</td>
+        ${editable ? `<td><button class="remove-btn" data-ticker="${ticker}" title="Remove">×</button></td>` : ''}`;
+    }
+    body.appendChild(tr);
+  });
+  if (editable) {
+    document.querySelectorAll(`#${bodyId} .remove-btn`).forEach(btn => {
+      btn.addEventListener('click', async () => {
+        tickers = tickers.filter(t => t !== btn.dataset.ticker);
+        await saveTickers();
+        renderAll(); renderSummary();
+      });
+    });
+  }
+}
+
+function renderAll() {
+  renderTable('tableBody', false);
+  renderTable('manageBody', true);
+}
+
+function renderSummary() {
+  const bar = document.getElementById('summaryBar');
+  const vals = tickers.map(t => peData[t]?.pe).filter(Boolean);
+  const vals5y = tickers.map(t => peData[t]?.pe5y).filter(Boolean);
+  const revVals = tickers.map(t => getRevVal(peData[t])).filter(v => v != null);
+  if (!vals.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  const avg = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);
+  const avg5y = vals5y.length ? (vals5y.reduce((a,b)=>a+b,0)/vals5y.length).toFixed(1) : null;
+  const avgRev = revVals.length ? (revVals.reduce((a,b)=>a+b,0)/revVals.length).toFixed(1) : null;
+  const min = Math.min(...vals).toFixed(1);
+  const max = Math.max(...vals).toFixed(1);
+  const minT = tickers.find(t => peData[t]?.pe && peData[t].pe.toFixed(1) == min);
+  const maxT = tickers.find(t => peData[t]?.pe && peData[t].pe.toFixed(1) == max);
+  const revSign = avgRev > 0 ? '+' : '';
+  bar.innerHTML = `
+    <div class="sum-item"><div class="sum-label">Peer avg P/E</div><div class="sum-val">${avg}</div></div>
+    ${avg5y ? `<div class="sum-item"><div class="sum-label">Peer avg 5Y P/E</div><div class="sum-val">${avg5y}</div></div>` : ''}
+    ${avgRev != null ? `<div class="sum-item"><div class="sum-label">Peer avg rev growth</div><div class="sum-val ${avgRev >= 0 ? '' : 'up'}">${revSign}${avgRev}%</div></div>` : ''}
+    <div class="sum-item"><div class="sum-label">Cheapest (${minT||''})</div><div class="sum-val pe-ok">${min}</div></div>
+    <div class="sum-item"><div class="sum-label">Priciest (${maxT||''})</div><div class="sum-val up">${max}</div></div>
+  `;
+  const have5y = tickers.filter(t => peData[t]?.pe5y).length;
+  document.getElementById('pe5yNote').textContent = have5y ? `5Y avg available for ${have5y}/${tickers.length} stocks.` : '';
+}
+
+function updateSortHeaders() {
+  document.querySelectorAll('#mainTable thead th').forEach(th => {
+    th.classList.remove('sorted');
+    th.querySelector('.arrow').textContent = '';
+  });
+  const active = document.querySelector(`#mainTable thead th[data-col="${sortCol}"]`);
+  if (active) { active.classList.add('sorted'); active.querySelector('.arrow').textContent = sortDir > 0 ? '↑' : '↓'; }
+}
+
+// ── Fetch all ─────────────────────────────────────────────────────────────────
+async function fetchAll(force) {
+  const toFetch = force ? [...tickers] : tickers.filter(t => !peData[t] || peData[t].error);
+  if (!toFetch.length) { renderAll(); renderSummary(); return; }
+  toFetch.forEach(t => { peData[t] = { loading: true }; });
+  renderAll();
+  document.getElementById('statusText').textContent = `Fetching ${toFetch.length} stock${toFetch.length > 1 ? 's' : ''}…`;
+  document.getElementById('statusDot').className = 'dot dot-amber';
+  await Promise.all(toFetch.map(async t => {
+    peData[t] = await fetchFull(t);
+    renderAll(); renderSummary();
+  }));
+  const errs = tickers.filter(t => peData[t]?.error).length;
+  document.getElementById('statusText').textContent = `Updated ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}${errs ? ` · ${errs} error(s)` : ''}`;
+  document.getElementById('statusDot').className = errs ? 'dot dot-amber' : 'dot dot-green';
+}
+
+// ── Add stock ─────────────────────────────────────────────────────────────────
+async function addTicker(raw) {
+  const ticker = raw.trim().toUpperCase().replace(/[^A-Z0-9.]/g,'');
+  const hint = document.getElementById('addHint');
+  if (!ticker) { hint.textContent = 'Please enter a ticker.'; hint.style.color = 'var(--red)'; return; }
+  if (tickers.includes(ticker)) { hint.textContent = `${ticker} is already in your list.`; hint.style.color = 'var(--red)'; return; }
+  if (tickers.length >= 25) { hint.textContent = 'Max 25 stocks.'; hint.style.color = 'var(--red)'; return; }
+  hint.textContent = `Looking up ${ticker}…`; hint.style.color = 'var(--text-2)';
+  const d = await fetchFull(ticker);
+  if (d.error && !d.pe) { hint.textContent = `Couldn't find "${ticker}". Check the symbol and try again.`; hint.style.color = 'var(--red)'; return; }
+  tickers.push(ticker);
+  peData[ticker] = d;
+  await saveTickers();
+  document.getElementById('tickerInput').value = '';
+  hint.textContent = `${ticker} added!`; hint.style.color = 'var(--green)';
+  renderAll(); renderSummary();
+  setTimeout(() => { hint.textContent = 'Enter a valid US ticker symbol.'; hint.style.color = ''; }, 2500);
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('#mainTable thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+    updateSortHeaders(); renderAll();
+  });
+});
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    activeTab = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('glanceView').style.display = activeTab === 'glance' ? '' : 'none';
+    document.getElementById('manageView').style.display = activeTab === 'manage' ? '' : 'none';
+    renderAll();
+  });
+});
+document.getElementById('refreshBtn').addEventListener('click', () => fetchAll(true));
+document.getElementById('addBtn').addEventListener('click', () => {
+  document.querySelector('[data-tab="manage"]').click();
+  setTimeout(() => document.getElementById('tickerInput').focus(), 100);
+});
+document.getElementById('addConfirmBtn').addEventListener('click', () => addTicker(document.getElementById('tickerInput').value));
+document.getElementById('tickerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTicker(e.target.value); });
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async () => { await loadTickers(); await fetchAll(false); })();
+</script>
+</body>
+</html>
